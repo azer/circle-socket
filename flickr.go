@@ -16,6 +16,7 @@ func SubscribeTo(username string, ch chan string) error {
 	}
 
 	following, err := GetFollowing(userId)
+	following = append(following, flickr.User{userId, username, "", 0, ""})
 
 	if err != nil {
 		return err
@@ -80,6 +81,7 @@ func GetFavs(userId string) ([]flickr.Fav, error) {
 		return favs, nil
 	}
 
+	timer := log.Timer()
 	favs, err = client.Favs(userId)
 
 	if err != nil {
@@ -93,6 +95,8 @@ func GetFavs(userId string) ([]flickr.Fav, error) {
 			log.Error("Unable to save %s", fav.Id)
 		}
 	}
+
+	timer.End("Pulled %s's favs", userId)
 
 	return favs, nil
 }
