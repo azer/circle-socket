@@ -1,19 +1,25 @@
 package circle
 
 import (
+	"github.com/azer/logger"
 	"code.google.com/p/go.net/websocket"
-	"fmt"
 	"net/http"
 	"time"
+	"fmt"
 )
 
 var (
+	log = logger.New("socket")
 	Online int = 0
 )
 
 func OnOpen(ws *websocket.Conn) {
 	Online = Online + 1
-	Log()
+
+	log.Info("%d online users.", Online)
+
+	key := fmt.Sprintf("Socket#%d", Online)
+	timer := log.Timer()
 
 	var (
 		user []byte
@@ -27,24 +33,26 @@ func OnOpen(ws *websocket.Conn) {
 
 		ch = make(chan string)
 		go SubscribeTo(string(user), ch)
-
-		for {
-			websocket.Message.Send(ws, <-ch)
-			time.Sleep(10 * time.Millisecond)
-		}
+		go Receive(ws, ch)
 	}
 
 	Online = Online - 1
 	ws.Close()
-	Log()
+
+	timer.End("%s got closed.", key)
 }
 
-func Log() {
-	fmt.Println(fmt.Sprintf("%d open connections.", Online))
+func Receive(ws *websocket.Conn, ch chan string) {
+	for {
+		websocket.Message.Send(ws, <-ch)
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	close(ch)
 }
 
 func Start(port string) {
-	fmt.Println("Starting...")
+	log.Info("Starting the server...")
 
 	http.Handle("/", websocket.Handler(OnOpen))
 
